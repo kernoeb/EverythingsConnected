@@ -1,5 +1,5 @@
 {
-  "name": "everything-connected",
+  "name": "everythings-connected",
   "type": "module",
   "version": "2.0.0",
   "private": true,
@@ -14,7 +14,7 @@
     "@dagrejs/dagre": "^1.1.8",
     "@vueuse/core": "^14.1.0",
     "d3": "^7.9.0",
-    "tinyqueue": "^2.0.3",
+    "tinyqueue": "^3.0.0",
     "vue": "^3.5.26",
     "vue-router": "^4.6.4"
   },
