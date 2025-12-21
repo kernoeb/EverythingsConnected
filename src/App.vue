@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import TinyQueue from 'tinyqueue'
-import { onMounted, reactive, ref, watchEffect } from 'vue'
+import { computed, onMounted, reactive, ref, watchEffect } from 'vue'
 import ForceGraph from './components/ForceGraph.vue'
 import { useSpotifyApi } from './composables/useSpotifyApi'
 
@@ -15,6 +15,7 @@ const queueLength = ref(0)
 const processingName = ref('')
 const isProcessing = ref(false)
 const searchInput = ref<HTMLInputElement | null>(null)
+const hiddenArtists = ref(new Set<string>())
 
 watchEffect(() => loading.value = loadingCount.value > 0 || isProcessing.value || queueLength.value > 0)
 
@@ -29,9 +30,107 @@ const options = reactive({
   degrees: 2,
 })
 
-const checkedArtistIds = new Set<string>()
-const processedArtistIds = new Set<string>()
+const checkedArtistIds = reactive(new Set<string>())
+const processedArtistIds = reactive(new Set<string>())
 let queue = new TinyQueue<any>([], (a, b) => a.priority - b.priority)
+
+const nodeDegrees = computed(() => {
+  const degrees = new Map<string, number>()
+  nodes.value.forEach(n => degrees.set(n.id, 0))
+  links.value.forEach(l => {
+    const s = typeof l.source === 'object' ? l.source.id : l.source
+    const t = typeof l.target === 'object' ? l.target.id : l.target
+    if (degrees.has(s)) degrees.set(s, (degrees.get(s) || 0) + 1)
+    if (degrees.has(t)) degrees.set(t, (degrees.get(t) || 0) + 1)
+  })
+  return degrees
+})
+
+const nodesWithDegrees = computed(() => {
+  return nodes.value.map(n => ({
+    ...n,
+    degree: nodeDegrees.value.get(n.id) || 0,
+  }))
+})
+
+// Nodes that pass the "Show Leaves" filter
+const displayedNodes = computed(() => {
+  return nodesWithDegrees.value.filter(n => options.showLeaves || n.degree > 1 || n.source === 'searched' || n.source === 'clicked')
+})
+
+const sortedDisplayedNodes = computed(() => {
+  return [...displayedNodes.value].sort((a, b) => a.name.localeCompare(b.name))
+})
+
+// Nodes actually sent to the graph (respects hiddenArtists)
+const graphVisibleNodes = computed(() => {
+  return displayedNodes.value.filter(n => !hiddenArtists.value.has(n.id))
+})
+
+const graphVisibleLinks = computed(() => {
+  const visibleIds = new Set(graphVisibleNodes.value.map(n => n.id))
+  return links.value.filter(l => {
+    const sourceId = typeof l.source === 'object' ? l.source.id : l.source
+    const targetId = typeof l.target === 'object' ? l.target.id : l.target
+    return visibleIds.has(sourceId) && visibleIds.has(targetId)
+  })
+})
+
+function toggleArtistVisibility(id: string) {
+  if (hiddenArtists.value.has(id)) {
+    hiddenArtists.value.delete(id)
+  } else {
+    hiddenArtists.value.add(id)
+  }
+}
+
+function pruneLeaves() {
+  // Calculate degrees based on current links
+  const degrees = new Map<string, number>()
+  nodes.value.forEach(n => degrees.set(n.id, 0))
+
+  links.value.forEach(l => {
+    const s = typeof l.source === 'object' ? l.source.id : l.source
+    const t = typeof l.target === 'object' ? l.target.id : l.target
+    if (degrees.has(s)) degrees.set(s, (degrees.get(s) || 0) + 1)
+    if (degrees.has(t)) degrees.set(t, (degrees.get(t) || 0) + 1)
+  })
+
+  // Identify nodes to remove (degree <= 1), BUT keep searched/clicked nodes
+  const nodesToRemove = new Set<string>()
+  nodes.value.forEach(n => {
+    // PROTECTED: 'searched' and 'clicked' nodes are never auto-pruned
+    if (n.source === 'searched' || n.source === 'clicked') return
+
+    if ((degrees.get(n.id) || 0) <= 1) {
+      nodesToRemove.add(n.id)
+    }
+  })
+
+  if (nodesToRemove.size === 0) {
+    alert('No leaves to prune!')
+    return
+  }
+
+  if (!confirm(`This will remove ${nodesToRemove.size} artists. Continue?`)) return
+
+  // Remove nodes
+  nodes.value = nodes.value.filter(n => !nodesToRemove.has(n.id))
+
+  // Remove links connected to removed nodes
+  links.value = links.value.filter(l => {
+    const s = typeof l.source === 'object' ? l.source.id : l.source
+    const t = typeof l.target === 'object' ? l.target.id : l.target
+    return !nodesToRemove.has(s) && !nodesToRemove.has(t)
+  })
+
+  // Clean up internal sets
+  nodesToRemove.forEach(id => {
+    checkedArtistIds.delete(id)
+    processedArtistIds.delete(id)
+    hiddenArtists.value.delete(id)
+  })
+}
 
 onMounted(async () => {
   // Focus the input
@@ -294,8 +393,8 @@ function reloadPage() {
       <div class="relative flex-grow overflow-hidden">
         <!-- Graph Component -->
         <ForceGraph
-          :links="links"
-          :nodes="nodes"
+          :links="graphVisibleLinks"
+          :nodes="graphVisibleNodes"
           :options="options"
           @link-click="handleLinkClick"
           @node-click="handleNodeClick"
@@ -416,9 +515,27 @@ function reloadPage() {
             <input v-model="options.showLeaves" class="checkbox checkbox-secondary" type="checkbox">
             <span class="label-text">Show Leaves</span>
           </label>
+          
+          <button class="btn btn-warning btn-sm btn-outline mt-2" @click="pruneLeaves">
+            Prune Leaves
+          </button>
+        </div>
+        
+        <div class="divider text-xs">Artists</div>
+        
+        <div class="flex-1 overflow-y-auto border border-base-300 rounded-lg p-2 bg-base-100/50 text-xs">
+          <div v-if="sortedDisplayedNodes.length === 0" class="text-center opacity-50 italic">
+            No artists displayed
+          </div>
+          <div v-for="node in sortedDisplayedNodes" :key="node.id" class="form-control">
+            <label class="label cursor-pointer justify-start gap-2 py-1">
+              <input type="checkbox" class="checkbox checkbox-xs" :checked="!hiddenArtists.has(node.id)" @change="toggleArtistVisibility(node.id)" />
+              <span class="label-text truncate max-w-[180px]" :class="{'opacity-50 line-through': hiddenArtists.has(node.id)}">{{ node.name }}</span>
+            </label>
+          </div>
         </div>
 
-        <div class="mt-auto flex flex-col gap-2">
+        <div class="mt-auto flex flex-col gap-2 pt-4">
           <button class="btn btn-outline btn-sm" @click="addRandomArtist">
             Add Random Artist
           </button>
@@ -443,3 +560,4 @@ function reloadPage() {
     </div>
   </div>
 </template>
+

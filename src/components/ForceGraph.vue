@@ -113,10 +113,7 @@ function updateGraph() {
   // We use the ID to filter.
   // IMPORTANT: We create NEW objects so D3 doesn't fight with Vue.
 
-  const rawNodes = props.nodes.map(n => ({ ...n })) // Shallow clone properties
-
-  // Filter Nodes
-  const activeNodes = rawNodes.filter(n => props.options.showLeaves || n.degree > 1)
+  const activeNodes = props.nodes.map(n => ({ ...n })) // Shallow clone properties
   const activeNodeIds = new Set(activeNodes.map(n => n.id))
 
   // Filter and Clean Links
