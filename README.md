@@ -3,7 +3,7 @@
 A modern, interactive visualization of the hidden connections between Spotify artists.
 **Explore the musical graph: search for an artist and watch the network of collaborations grow.**
 
-> **Note:** This project is a complete rewrite and fork of [EverythingsConnected](https://github.com/donovanwest/EverythingsConnected) by Donovan West. While the core concept remains the same, this version is built with a modern tech stack (Vue 3, Vite) and includes new features like dynamic expansion, user login, and improved performance.
+> **Note:** This project is a complete rewrite and fork of [EverythingsConnected](https://github.com/donovanwest/EverythingsConnected) by Donovan West. While the core concept remains the same, this version is built with a modern tech stack (Vue 3, Vite) and includes new features and improved performance.
 
 ## 🚀 Features
 
