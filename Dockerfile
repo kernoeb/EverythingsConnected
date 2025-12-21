@@ -10,6 +10,9 @@ RUN bun install --frozen-lockfile
 # Copy the rest of the source code
 COPY . .
 
+ARG VITE_SPOTIFY_CLIENT_ID
+ENV VITE_SPOTIFY_CLIENT_ID=$VITE_SPOTIFY_CLIENT_ID
+
 # Build the Vue application (outputs to /app/dist)
 RUN bun run build
 
