@@ -138,7 +138,19 @@ export function useSpotifyApi() {
   }
 
   const searchArtist = async (name: string) => {
-    const data = await fetchWithToken(`/search?q=${encodeURIComponent(`artist:${name}`)}&type=artist&limit=1`)
+    const trimmedName = name.trim()
+
+    // 1. Try exact artist match with quotes (High precision, good for "Sia")
+    let data = await fetchWithToken(`/search?q=${encodeURIComponent(`artist:"${trimmedName}"`)}&type=artist&limit=1`)
+
+    if (data.artists?.items && data.artists.items.length > 0) {
+      return data.artists.items[0]
+    }
+
+    // 2. Fallback to fuzzy artist search (Good for "THÉA")
+    console.warn(`[useSpotifyApi] Exact search for 'artist:"${trimmedName}"' failed, falling back to standard artist search.`)
+    data = await fetchWithToken(`/search?q=${encodeURIComponent(`artist:${trimmedName}`)}&type=artist&limit=1`)
+
     return data.artists?.items[0]
   }
 
