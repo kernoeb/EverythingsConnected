@@ -54,7 +54,7 @@ npm install
 
 Create a `.env` file in the root directory. You will need a Spotify Client ID and Secret from the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/).
 
-**Important:** Ensure you add `http://localhost:5173` (frontend) and `http://127.0.0.1:5173` (for PKCE) to your Spotify App's **Redirect URIs**.
+**Important:** Ensure you add `http://127.0.0.1:5173` to your Spotify App's **Redirect URIs** (`localhost` won't work).
 
 ```env
 # For the Backend Token Server (server.ts)
