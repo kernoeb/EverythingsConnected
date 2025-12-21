@@ -269,48 +269,11 @@ function updateGraph() {
     .text(d => d.degree)
     .style('font-size', d => `${getRadius(d) / 3}px`)
 
+  // ... inside updateGraph ...
   // --- LAYOUT LOGIC ---
   if (props.options.layout === 'dagre') {
     simulation.stop()
-    const g = new dagre.graphlib.Graph()
-    g.setGraph({ rankdir: 'LR', align: 'DL', nodesep: 50, ranksep: 150, marginx: 50, marginy: 50 })
-    g.setDefaultEdgeLabel(() => ({}))
-
-    activeNodes.forEach((node) => {
-      const r = getRadius(node)
-      g.setNode(node.id, { width: r * 2, height: r * 2 })
-    })
-
-    activeLinks.forEach((link) => {
-      // activeLinks now has objects for source/target if D3 processed them,
-      // OR strings if it's fresh.
-      // Safe access:
-      const s = (link.source as any).id || link.source
-      const t = (link.target as any).id || link.target
-      g.setEdge(s, t)
-    })
-
-    dagre.layout(g)
-
-    // Apply Dagre positions
-    // Center the graph
-    const graphLabel = g.graph()
-    const offsetX = (width - graphLabel.width!) / 2
-    const offsetY = (height - graphLabel.height!) / 2
-
-    activeNodes.forEach((node) => {
-      const pos = g.node(node.id)
-      if (pos) {
-        // Animate or set?
-        // Let's set target positions and use a transition if we want, or just tick.
-        // For simplicity and performance, we'll set x/y and fx/fy to lock them.
-        node.fx = pos.x + offsetX
-        node.fy = pos.y + offsetY
-        node.x = node.fx
-        node.y = node.fy
-      }
-    })
-
+    layoutDagre(activeNodes, activeLinks, { nodesep: 50, ranksep: 150 })
     // Manually tick once to update DOM
     ticked()
   } else {
@@ -323,12 +286,78 @@ function updateGraph() {
       }
     })
 
+    // Reset forces to default
+    simulation.force('charge', d3.forceManyBody().strength((d: any) => -15 * getRadius(d)))
+    simulation.force('collide', d3.forceCollide().radius((d: any) => getRadius(d) * 1.5))
+
     // Restart
     simulation.alpha(0.5).restart()
   }
 
   previousLayout.value = props.options.layout
 }
+
+function layoutDagre(nodes: any[], links: any[], config: { nodesep: number, ranksep: number }) {
+  const g = new dagre.graphlib.Graph()
+  g.setGraph({ rankdir: 'LR', align: 'DL', nodesep: config.nodesep, ranksep: config.ranksep, marginx: 50, marginy: 50 })
+  g.setDefaultEdgeLabel(() => ({}))
+
+  nodes.forEach((node) => {
+    const r = getRadius(node)
+    g.setNode(node.id, { width: r * 2, height: r * 2 })
+  })
+
+  links.forEach((link) => {
+    // activeLinks now has objects for source/target if D3 processed them,
+    // OR strings if it's fresh.
+    // Safe access:
+    const s = (link.source as any).id || link.source
+    const t = (link.target as any).id || link.target
+    g.setEdge(s, t)
+  })
+
+  dagre.layout(g)
+
+  // Apply Dagre positions
+  // Center the graph
+  const graphLabel = g.graph()
+  const offsetX = (width - graphLabel.width!) / 2
+  const offsetY = (height - graphLabel.height!) / 2
+
+  nodes.forEach((node) => {
+    const pos = g.node(node.id)
+    if (pos) {
+      // Animate or set?
+      // Let's set target positions and use a transition if we want, or just tick.
+      // For simplicity and performance, we'll set x/y and fx/fy to lock them.
+      node.fx = pos.x + offsetX
+      node.fy = pos.y + offsetY
+      node.x = node.fx
+      node.y = node.fy
+    }
+  })
+}
+
+function optimizeLayout() {
+  if (!simulation) return
+  
+  // Get current nodes/links from simulation
+  const currentNodes = simulation.nodes()
+  const currentLinks = (simulation.force('link') as d3.ForceLink<any, any>).links()
+
+  if (props.options.layout === 'dagre') {
+    // Optimize Dagre: Increase spacing
+    layoutDagre(currentNodes, currentLinks, { nodesep: 100, ranksep: 250 })
+    ticked()
+  } else {
+    // Optimize Force: Stronger repulsion and collision
+    simulation.force('charge', d3.forceManyBody().strength((d: any) => -50 * getRadius(d)))
+    simulation.force('collide', d3.forceCollide().radius((d: any) => getRadius(d) * 1.2).iterations(8))
+    simulation.alpha(1).restart()
+  }
+}
+
+defineExpose({ optimizeLayout })
 
 function ticked() {
   if (linkSelection) {

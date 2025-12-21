@@ -16,6 +16,9 @@ const processingName = ref('')
 const isProcessing = ref(false)
 const searchInput = ref<HTMLInputElement | null>(null)
 const hiddenArtists = ref(new Set<string>())
+const graphRef = ref<any>(null)
+const bulkInput = ref('')
+const bulkDialog = ref<HTMLDialogElement | null>(null)
 
 watchEffect(() => loading.value = loadingCount.value > 0 || isProcessing.value || queueLength.value > 0)
 
@@ -81,6 +84,43 @@ function toggleArtistVisibility(id: string) {
     hiddenArtists.value.delete(id)
   } else {
     hiddenArtists.value.add(id)
+  }
+}
+
+function openBulkModal() {
+  bulkInput.value = ''
+  bulkDialog.value?.showModal()
+}
+
+async function processBulkAdd() {
+  if (!bulkInput.value.trim()) return
+
+  const names = bulkInput.value.split(/[\n,]/).map(s => s.trim()).filter(s => s.length > 0)
+  // Remove duplicates
+  const uniqueNames = [...new Set(names)]
+
+  bulkDialog.value?.close()
+  
+  // We process them one by one to avoid rate limiting
+  for (const name of uniqueNames) {
+    loadingCount.value++
+    try {
+      const artist = await api.searchArtist(name)
+      if (artist) {
+        addArtistToGraph(artist, 0, 'searched', true)
+      } else {
+        console.warn(`[Bulk Add] Could not find artist: ${name}`)
+      }
+    } catch (e) {
+      console.error(`[Bulk Add] Error searching for ${name}:`, e)
+    } finally {
+      loadingCount.value--
+    }
+  }
+  
+  // Start processing connections if queue has items
+  if (queueLength.value > 0) {
+    processQueue()
   }
 }
 
@@ -393,6 +433,7 @@ function reloadPage() {
       <div class="relative flex-grow overflow-hidden">
         <!-- Graph Component -->
         <ForceGraph
+          ref="graphRef"
           :links="graphVisibleLinks"
           :nodes="graphVisibleNodes"
           :options="options"
@@ -519,6 +560,10 @@ function reloadPage() {
           <button class="btn btn-warning btn-sm btn-outline mt-2" @click="pruneLeaves">
             Prune Leaves
           </button>
+
+          <button class="btn btn-info btn-sm btn-outline" @click="graphRef?.optimizeLayout()">
+            Optimize Layout
+          </button>
         </div>
         
         <div class="divider text-xs">Artists</div>
@@ -536,6 +581,10 @@ function reloadPage() {
         </div>
 
         <div class="mt-auto flex flex-col gap-2 pt-4">
+          <button class="btn btn-outline btn-sm" @click="openBulkModal">
+            Bulk Add Artists
+          </button>
+          
           <button class="btn btn-outline btn-sm" @click="addRandomArtist">
             Add Random Artist
           </button>
@@ -558,6 +607,21 @@ function reloadPage() {
         </div>
       </div>
     </div>
+    
+    <!-- Bulk Add Modal -->
+    <dialog ref="bulkDialog" class="modal">
+      <div class="modal-box">
+        <h3 class="font-bold text-lg">Bulk Add Artists</h3>
+        <p class="py-4">Enter a list of artists, separated by newlines or commas.</p>
+        <textarea v-model="bulkInput" class="textarea textarea-bordered w-full h-32" placeholder="Orelsan, Stromae, Angèle..."></textarea>
+        <div class="modal-action">
+          <form method="dialog">
+            <button class="btn btn-ghost mr-2">Cancel</button>
+            <button class="btn btn-primary" @click.prevent="processBulkAdd">Add Artists</button>
+          </form>
+        </div>
+      </div>
+    </dialog>
   </div>
 </template>
 
