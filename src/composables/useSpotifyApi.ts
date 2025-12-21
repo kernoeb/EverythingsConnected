@@ -138,7 +138,7 @@ export function useSpotifyApi() {
   }
 
   const searchArtist = async (name: string) => {
-    const data = await fetchWithToken(`/search?q=${encodeURIComponent(name)}&type=artist&limit=1`)
+    const data = await fetchWithToken(`/search?q=${encodeURIComponent(`artist:${name}`)}&type=artist&limit=1`)
     return data.artists?.items[0]
   }
 
