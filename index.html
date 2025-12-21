@@ -1,164 +1,27 @@
-<!--
-  Created by Donovan West
-  For the KSU Senior Project class Spring 2021
-  Last updated February 2022
--->
+<!doctype html>
+<html lang="en" data-theme="light">
+    <head>
+        <meta charset="UTF-8" />
+        <link rel="icon" type="image/png" href="/images/favicon-32x32.png" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+            name="description"
+            content="Explore artist collaborations through an interactive network graph using the Spotify API."
+        />
 
-<!DOCTYPE html>
-<html lang="en-US">
-<meta charset="utf-8">
-<head>
-  <html lang="en-US">
-  <meta charset="utf-8">
-  <meta name="author" content="Donovan West">
-  <meta name="description" content = "This web-app uses the Spotify API to show how artists have collaborated
-    with each other by creating a big network graph">
-  <link rel="canonical" href="https://everythings-connected.com">
+        <!-- Original project used Rubik Mono One for graph labels -->
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Rubik+Mono+One&display=swap"
+            rel="stylesheet"
+        />
 
-  <meta property="og:title" content="Everything's Connected" />
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://everythings-connected.com" />
-  <meta property="og:image" content="https://everythings-connected.com/images/example.png" />
-  <meta property="og:image" content="https://donovanwest.github.io/EverythingsConnected/images/example.png"/>
-  <meta property="og:image:type" content="image/png" />
-  <meta property="og:image:alt" content="An example network created by the app"/>
-  <meta property="og:description" content="This web-app uses the Spotify API to show how artists have collaborated
-  with each other by creating a big network graph" />
-
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:site" content="@donovan_west">
-  <meta name="twitter:creator" content="@donovan_west">
-  <meta name="twitter:title" content="Everything's Connected">
-  <meta name="twitter:description" content="This web-app uses the Spotify API to show how artists have collaborated
-  with each other by creating a big network graph">
-  <meta name="twitter:image" content="https://everythings-connected.com/images/example.png">
-
-  <title>Everything's Connected</title>
-  <link rel="apple-touch-icon" sizes="180x180" href="images/apple-touch-icon.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16x16.png">
-  <link rel="manifest" href="images/site.webmanifest">
-  <link rel="mask-icon" href="images/safari-pinned-tab.svg" color="#5bbad5">
-  <meta name="msapplication-TileColor" content="#da532c">
-  <meta name="theme-color" content="#ffffff">
-
-  <link rel="stylesheet" href="style.css">
-  <script src="https://d3js.org/d3.v5.min.js"></script>
-  <script src="spotify-web-api.js"></script>
-  <script src="https://unpkg.com/tinyqueue@2.0.0/tinyqueue.min.js"></script>
-  <script type = "module" src="api.js"></script>
-  <script type = "module" src="graph.js"></script>
-  <script type = "module" src="app.js"></script>
-</head>
-<body>
-  <img id="loading" src="images/loading.gif" alt="loading">
-  <label id="attempts" hidden>Attempts: 0</label>
-  
-  <label id="zoomWarning">Your mouse must be over white-space in order to zoom</label>
-  <div id="links">
-    <button id="homeLink">Home</button>
-    <button id="guideLink">Guide</button>
-    <button id="aboutLink">About</button>
-    <button id="privacyPolicyLink">Privacy Policy</button>
-    <button id="githubLink"></button>
-  </div>
-  <div id="sidebar">
-    <button id="moveSidebarLeft"><<<</button> 
-    <input id="artistEntry" type="text">
-    <div class="tooltip">
-    <span class=tooltiptext>Searches Spotify for the top artist result or uses a link to an artist. Can also use a playlist link to add all artists in that playlist</span>
-      <button id="searchArtist" class="searchButton">Search for Artist or Playlist</button>
-    </div>
-    <div class="tooltip">
-      <span class=tooltiptext>Add a random artist to the screen. See if you can connect them to your existing network. Might take a few seconds to find a suitable one</span>
-      <button id="addRandomArtist" class="searchButton">Add Random Artist</button>
-    </div>
-    <div class="tooltip">
-      <span class=tooltiptext>Requires logging in. Adds all the artists you follow to the screen. You can use the Full Search to find out how many of them are connected or do it yourself with one at a time.</span>
-      <button id="addFollowedArtists" class="searchButton">Add Followed Artists</button>
-    </div>
-    <div class="tooltip">
-      <span class=tooltiptext>Optional, but you must do this to add all your followed artists. The only information it gives access too and uses is your followed artist list.</span>
-      <button id="loginButton">Login to Spotify</button>
-    </div>
-    <div class="tooltip">
-      <span class=tooltiptext>Delete entire graph and start over</span>
-      <button id="deleteButton" class="searchButton">Reset</button>
-    </div>
-    <p class="label">Search Options</p>
-    <form id="searchModeSelection">
-      <div class="tooltip">
-        <span class=tooltiptext>This will bring up one artist and all their collaborators (recommended)</span>
-        <input type="radio" id="oneAtATime" name="searchMode" value="One At A Time" checked>
-        <label for="oneAtATime">One at a Time</label><br>
-      </div>
-
-      <div class="tooltip">
-        <span class=tooltiptext>This will run the search on the given artist, then all of their collaborators, then all of their collaborators etc. up until the given degree limit.</span>
-        <input type="radio" id="full" name="searchMode" value="fullSearch">
-        <label for="full">Full Search</label>
-      </div>
-
-      <div class="tooltip">
-        <span class=tooltiptext>Sets the limit for the full search. High numbers can be very slow, so 2 degrees is recommended to start</span>
-        <label for="slider" disabled>Degrees of separation: </label>
-        <input type="range" min="0" max="5" value="2" id="degreeSlider" disabled>
-        <label id="degreeLabel" disabled>2</label><br>
-      </div>
-      
-    </form>
-    <p class="label">Display Options</P>
-    <form id="displayModeSelection">
-      <div class="tooltip">
-        <span class=tooltiptext>Filters out artists that are very unpopular or don't have an image to reduce clutter and lag</span>
-        <input type="checkbox" id="smartFilter" value="smartFilter" checked>
-        <label for="smartFilter">Filter Junk</label><br>
-      </div>
-      <div class="tooltip">
-        <span class=tooltiptext>Shows images of the artists. At high numbers images can decrease the framerate</span>
-        <input type="checkbox" id="showImages" value="showImages" checked>
-        <label for="showImages">Show Images</label><br>
-      </div>
-
-      <div class="tooltip">
-        <span class=tooltiptext>Spotify assigns artists a popularity between 0 and 100. Basing circle size on that number will help to emphasize more well known artists</span>
-        <input type="checkbox" id="popBasedSize" value="popBasedSize" checked>
-        <label for="popBasedSize">Base Circle Size on Popularity</label><br>
-      </div>
-
-      <div class="tooltip">
-        <span class=tooltiptext>Unselecting this hides artists with only one connection, putting more focus on interesting connections and reducing lag</span>
-        <input type="checkbox" id="showLeaves" value="showLeaves" checked>
-        <label for="showLeaves">Show Leaves</label><br>
-      </div>
-
-      <div class="tooltip" id="maxConnectionsDiv">
-        <span class=tooltiptext>Max number of connections shown per artist. Prioritizes popular artists and non-leaves</span>
-        <label for="maxDegrees">Max connections shown: </label>
-        <input type="range" min="0" max="225" step="25" value="50" id="maxDegreesSlider">
-        <label id="maxDegreesLabel">50</label><br>
-      </div>
-    </form>
-    
-    <div class="tooltip">
-      <span class=tooltiptext>The total number of artists displayed</span>
-      <p class="label" id="totalArtists">Total Artists: </p>
-    </div>
-
-    <div class="tooltip" id="nameOfSongDiv">
-      <span class=tooltiptext>If you click the line between two artists, it will show the name of a song they collaborated on here. 
-        It will also play a sample if available. Signing in increases availability.</span>
-      <p id="nameOfSongLabel" class="label">Song connecting the artists:</p>
-    </div>
-    <iframe id="songEmbed" frameborder="0" allowtransparency="true" allow="encrypted-media"></iframe>
-
-    <p id="songName"><p>
-  </div>
-  <div id="ib-d3-graph-div">
-    <p id="getStarted">
-      To get started try searching for your favorite artist in the text box in the upper left or clicking the random artist button.<br>
-      If you hover over a control it will give a brief description of what it does.
-    </p>
-  </div>
-</body>
-
+        <title>Everything's Connected</title>
+    </head>
+    <body>
+        <div id="app"></div>
+        <!-- Vite entry point -->
+        <script type="module" src="/src/main.ts"></script>
+    </body>
+</html>

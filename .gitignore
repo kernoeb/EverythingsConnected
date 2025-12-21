@@ -1,6 +1,5 @@
-#this is a temporary measure to keep my code on github, but hide my
-#spotify client ID and Secret. Later I plan to implement oauth stuff
-info.txt
-credentials.js
-.vscode
-.vscode/*
+.env
+.gemini-clipboard
+/node_modules
+tsconfig.tsbuildinfo
+/dist

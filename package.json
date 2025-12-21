@@ -1,0 +1,35 @@
+{
+  "name": "everything-connected",
+  "type": "module",
+  "version": "2.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc && vite build",
+    "preview": "vite preview",
+    "server": "bun --hot run server.ts",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@dagrejs/dagre": "^1.1.8",
+    "@vueuse/core": "^14.1.0",
+    "d3": "^7.9.0",
+    "tinyqueue": "^2.0.3",
+    "vue": "^3.5.26",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^6.7.2",
+    "@tailwindcss/vite": "^4.1.18",
+    "@types/bun": "^1.3.5",
+    "@types/d3": "^7.4.3",
+    "@types/dagre": "^0.7.53",
+    "@vitejs/plugin-vue": "^6.0.3",
+    "daisyui": "^5.5.14",
+    "eslint": "^9.39.2",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.0",
+    "vue-tsc": "^3.2.0"
+  }
+}
