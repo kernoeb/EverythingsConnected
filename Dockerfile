@@ -1,4 +1,4 @@
-ARG BUN_VERSION=1
+ARG BUN_VERSION=1.4.4
 FROM oven/bun:${BUN_VERSION} AS build
 
 WORKDIR /app
@@ -20,16 +20,11 @@ RUN bun run build
 RUN bun build --compile --minify --sourcemap server.ts --outfile server
 
 ##########################################################
-FROM busybox:uclibc AS busybox
-
-##########################################################
-FROM gcr.io/distroless/base-debian12
+FROM cgr.dev/chainguard/glibc-dynamic:latest
 
 WORKDIR /app
 
-# Copy shell and wget for debugging/healthchecks (optional but useful)
-COPY --from=busybox /bin/sh /bin/sh
-COPY --from=busybox /bin/wget /usr/bin/wget
+COPY --from=ghcr.io/tarampampam/microcheck:1 /bin/httpcheck /bin/httpcheck
 
 # Copy the built frontend assets from the build stage
 COPY --from=build /app/dist ./dist
@@ -39,6 +34,9 @@ COPY --from=build /app/server .
 
 # Expose the port the server listens on
 EXPOSE 3001
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
+  CMD ["/bin/httpcheck", "http://127.0.0.1:3001/"]
 
 # Start the server
 CMD ["./server"]
