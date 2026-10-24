@@ -4,3 +4,4 @@
 tsconfig.tsbuildinfo
 /dist
 /EverythingsConnected/
+.DS_Store
